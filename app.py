@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, send_file, jsonify
+from flask import Flask, after_this_request, render_template, request, send_file, jsonify
 import yt_dlp
 import os
 import logging
