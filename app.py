@@ -10,22 +10,19 @@ logging.basicConfig(level=logging.DEBUG)
 def download_video(url):
     try:
         # Define download options
+        temp_dir = '/tmp'  # Use the writable temporary directory
         ydl_opts = {
             'format': 'best',
-            'outtmpl': 'downloads/%(title)s.%(ext)s',  # Save in 'downloads' folder
+            'outtmpl': os.path.join(temp_dir, '%(title)s.%(ext)s'),
         }
-
-        # Create the downloads directory if it doesn't exist
-        if not os.path.exists('downloads'):
-            os.makedirs('downloads')
 
         # Download the video
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
         # Get the file path
-        file_name = os.listdir('downloads')[0]  # Get the first downloaded file
-        file_path = os.path.join('downloads', file_name)
+        file_name = os.listdir(temp_dir)[0]  # Get the first downloaded file
+        file_path = os.path.join(temp_dir, file_name)
         logging.debug(f"Downloaded file path: {file_path}")
         return file_path
 
@@ -47,6 +44,16 @@ def download():
         if url:
             # Download the video
             file_path = download_video(url)
+
+            @after_this_request
+            def cleanup(response):
+                try:
+                    os.remove(file_path)
+                    logging.debug(f"File deleted: {file_path}")
+                except Exception as cleanup_error:
+                    logging.error(f"Cleanup error: {cleanup_error}")
+                return response
+
             return send_file(file_path, as_attachment=True)
 
         return 'No URL provided.', 400
