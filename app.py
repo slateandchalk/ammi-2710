@@ -1,6 +1,6 @@
+import os
 from flask import Flask, render_template, request, send_file
 import yt_dlp
-import os
 
 app = Flask(__name__)
 
@@ -9,19 +9,16 @@ def download_video(url):
     # Define download options
     ydl_opts = {
         'format': 'best',
-        'outtmpl': 'downloads/%(title)s.%(ext)s',  # Save in 'downloads' folder
+        'outtmpl': '/tmp/%(title)s.%(ext)s',  # Use /tmp for temporary storage on Heroku
     }
 
-    # Create the downloads directory if it doesn't exist
-    if not os.path.exists('downloads'):
-        os.makedirs('downloads')
-
+    # Create a downloads directory if necessary
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
 
-    # Get the file path (assuming the file is in 'downloads' folder)
-    file_name = os.listdir('downloads')[0]  # Get the first downloaded file
-    file_path = os.path.join('downloads', file_name)
+    # Get the file path (in /tmp directory on Heroku)
+    file_name = os.listdir('/tmp')[0]  # Get the first downloaded file
+    file_path = os.path.join('/tmp', file_name)
     return file_path
 
 # Home page route
