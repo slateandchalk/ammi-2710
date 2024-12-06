@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, after_this_request
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import os
@@ -69,6 +69,15 @@ def download():
 
         # Directly download the video (no conversion needed for Shorts)
         file_path = download_video(video_url)
+
+        # Cleanup the file after sending it
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(file_path)
+            except Exception as cleanup_error:
+                logging.error(f"Cleanup error: {cleanup_error}")
+            return response
 
         return send_file(file_path, as_attachment=True)
 
