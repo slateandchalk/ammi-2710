@@ -48,13 +48,18 @@ def download_video(video_url):
 def download():
     try:
         video_url = request.form['url']
+
+        # Extract video ID for Shorts or standard YouTube videos
         if "youtube.com/watch?v=" in video_url:
             video_id = video_url.split("v=")[1]
         elif "youtu.be/" in video_url:
             video_id = video_url.split("youtu.be/")[1]
+        elif "youtube.com/shorts/" in video_url:
+            video_id = video_url.split("/shorts/")[1]
         else:
             return "Invalid YouTube URL", 400
 
+        # Fetch video details to confirm the video exists
         video_details = fetch_video_details(video_id)
         if not video_details or not video_details.get("items"):
             return "Unable to fetch video details or video not found.", 404
@@ -62,8 +67,9 @@ def download():
         video_info = video_details["items"][0]["snippet"]
         logging.debug(f"Video title: {video_info['title']}")
 
-        # Use yt-dlp for authenticated download
+        # Directly download the video (no conversion needed for Shorts)
         file_path = download_video(video_url)
+
         return send_file(file_path, as_attachment=True)
 
     except Exception as e:
