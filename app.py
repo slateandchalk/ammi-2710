@@ -13,8 +13,10 @@ logging.basicConfig(level=logging.DEBUG)
 API_KEY = os.getenv('YOUTUBE_API_KEY')
 
 # Function to fetch video details using YouTube Data API
+# Function to fetch video details using YouTube Data API
 def fetch_video_details(video_id):
     try:
+        # Explicitly pass the API key
         youtube = build('youtube', 'v3', developerKey=API_KEY)
         request = youtube.videos().list(part="snippet,contentDetails", id=video_id)
         response = request.execute()
