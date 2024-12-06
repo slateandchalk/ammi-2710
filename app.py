@@ -4,10 +4,12 @@ import yt_dlp
 import os
 import logging
 from dotenv import load_dotenv
+
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('GOOGLE_CLIENT_SECRET')  # Replace with a strong secret key
+app.secret_key = os.getenv('APP_SECRET_KEY')  # Replace with a strong secret key
 logging.basicConfig(level=logging.DEBUG)
 
 # Google OAuth configuration
@@ -38,6 +40,7 @@ def download_video(url):
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([url])
 
+        # Get the downloaded file
         file_name = os.listdir(temp_dir)[0]
         file_path = os.path.join(temp_dir, file_name)
         logging.debug(f"Downloaded file path: {file_path}")
@@ -58,8 +61,8 @@ def authorized():
     response = google.authorized_response()
     if response is None or response.get('access_token') is None:
         return 'Access denied: reason={} error={}'.format(
-            request.args['error_reason'],
-            request.args['error_description']
+            request.args.get('error_reason'),
+            request.args.get('error_description')
         )
 
     session['google_token'] = (response['access_token'], '')
@@ -83,21 +86,22 @@ def home():
 @app.route('/download', methods=['POST'])
 def download():
     try:
-        url = request.form['url']
-        if url:
-            file_path = download_video(url)
+        url = request.form.get('url')
+        if not url:
+            return 'No URL provided.', 400
 
-            @after_this_request
-            def cleanup(response):
-                try:
-                    os.remove(file_path)
-                except Exception as cleanup_error:
-                    logging.error(f"Cleanup error: {cleanup_error}")
-                return response
+        file_path = download_video(url)
 
-            return send_file(file_path, as_attachment=True)
+        @after_this_request
+        def cleanup(response):
+            try:
+                os.remove(file_path)
+                logging.debug(f"File deleted: {file_path}")
+            except Exception as cleanup_error:
+                logging.error(f"Cleanup error: {cleanup_error}")
+            return response
 
-        return 'No URL provided.', 400
+        return send_file(file_path, as_attachment=True)
 
     except Exception as e:
         logging.error(f"Exception in /download route: {e}")
