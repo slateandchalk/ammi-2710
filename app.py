@@ -1,35 +1,34 @@
 from flask import Flask, after_this_request, redirect, url_for, session, render_template, request, send_file, jsonify
-from flask_oauthlib.client import OAuth
+from googleapiclient.discovery import build
 import yt_dlp
 import os
 import logging
 from dotenv import load_dotenv
 
-# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('APP_SECRET_KEY')  # Replace with a strong secret key
+app.secret_key = os.getenv('FLASK_SECRET_KEY')  # Use a strong secret key
 logging.basicConfig(level=logging.DEBUG)
 
-# Google OAuth configuration
-oauth = OAuth(app)
-google = oauth.remote_app(
-    'google',
-    consumer_key=os.getenv('GOOGLE_CLIENT_ID'),
-    consumer_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
-    request_token_params={
-        'scope': 'email profile',
-    },
-    base_url='https://www.googleapis.com/oauth2/v1/',
-    request_token_url=None,
-    access_token_method='POST',
-    access_token_url='https://accounts.google.com/o/oauth2/token',
-    authorize_url='https://accounts.google.com/o/oauth2/auth',
-)
+# YouTube API configuration
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+
+# Function to fetch video details
+def get_video_details(video_id):
+    try:
+        response = youtube.videos().list(part='snippet,contentDetails', id=video_id).execute()
+        if 'items' in response and len(response['items']) > 0:
+            return response['items'][0]
+        else:
+            raise ValueError("No video found with the provided ID.")
+    except Exception as e:
+        logging.error(f"Error fetching video details: {e}")
+        raise
 
 # Function to download video using yt-dlp
-def download_video(url):
+def download_video(video_url):
     try:
         temp_dir = '/tmp'  # Use the writable temporary directory
         ydl_opts = {
@@ -38,7 +37,7 @@ def download_video(url):
         }
 
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+            ydl.download([video_url])
 
         # Get the downloaded file
         file_name = os.listdir(temp_dir)[0]
@@ -50,46 +49,29 @@ def download_video(url):
         logging.error(f"Error during video download: {e}")
         raise
 
-# Login route
-@app.route('/login')
-def login():
-    return google.authorize(callback=url_for('authorized', _external=True))
-
-# OAuth callback
-@app.route('/login/callback')
-def authorized():
-    response = google.authorized_response()
-    if response is None or response.get('access_token') is None:
-        return 'Access denied: reason={} error={}'.format(
-            request.args.get('error_reason'),
-            request.args.get('error_description')
-        )
-
-    session['google_token'] = (response['access_token'], '')
-    user_info = google.get('userinfo')
-    session['user'] = user_info.data
-    return redirect(url_for('home'))
-
-@google.tokengetter
-def get_google_oauth_token():
-    return session.get('google_token')
-
 # Home page route
 @app.route('/')
 def home():
-    user = session.get('user')
-    if not user:
-        return redirect(url_for('login'))
-    return render_template('index.html', user=user)
+    return render_template('index.html')
 
-# Route for handling the download request
+# Route for fetching video details and downloading
 @app.route('/download', methods=['POST'])
 def download():
     try:
-        url = request.form.get('url')
+        url = request.form['url']
         if not url:
-            return 'No URL provided.', 400
+            return "No URL provided.", 400
 
+        # Extract video ID from the URL
+        video_id = url.split('v=')[1].split('&')[0] if 'v=' in url else url.split('/')[-1]
+        logging.debug(f"Extracted Video ID: {video_id}")
+
+        # Get video details
+        video_details = get_video_details(video_id)
+        video_title = video_details['snippet']['title']
+        logging.debug(f"Video Title: {video_title}")
+
+        # Download the video
         file_path = download_video(url)
 
         @after_this_request
