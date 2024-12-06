@@ -3,6 +3,8 @@ from flask_oauthlib.client import OAuth
 import yt_dlp
 import os
 import logging
+from dotenv import load_dotenv
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = os.getenv('GOOGLE_CLIENT_SECRET')  # Replace with a strong secret key
