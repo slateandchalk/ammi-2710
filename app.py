@@ -12,8 +12,8 @@ logging.basicConfig(level=logging.DEBUG)
 oauth = OAuth(app)
 google = oauth.remote_app(
     'google',
-    consumer_key='345696859354-i1k757lrgsdggrf6c3ukid1499v2uaal.apps.googleusercontent.com',  # Replace with your Google Client ID
-    consumer_secret='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',  # Replace with your Google Client Secret
+    consumer_key=os.getenv('GOOGLE_CLIENT_ID'),
+    consumer_secret=os.getenv('GOOGLE_CLIENT_SECRET'),
     request_token_params={
         'scope': 'email profile',
     },
