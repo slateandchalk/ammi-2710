@@ -5,7 +5,7 @@ import os
 import logging
 
 app = Flask(__name__)
-app.secret_key = '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'  # Replace with a strong secret key
+app.secret_key = os.getenv('GOOGLE_CLIENT_SECRET')  # Replace with a strong secret key
 logging.basicConfig(level=logging.DEBUG)
 
 # Google OAuth configuration
